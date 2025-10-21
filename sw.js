@@ -1,5 +1,5 @@
 // Basic service worker for offline caching (Network falling back to cache)
-const CACHE_NAME = 'todo-pwa-cache-v1';
+const CACHE_NAME = 'todo-pwa-cache-v2';
 const APP_SHELL = [
   './',
   './index.html',

@@ -120,11 +120,11 @@ clearDoneBtn.addEventListener('click', () => {
   render();
 });
 exportBtn.addEventListener('click', () => {
-  const data = JSON.stringify(tasks, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
+  const csv = tasksToCSV(tasks);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'todo-export.json'; a.click();
+  a.href = url; a.download = 'todo-export.csv'; a.click();
   URL.revokeObjectURL(url);
 });
 importBtn.addEventListener('click', () => importFile.click());
@@ -133,9 +133,16 @@ importFile.addEventListener('change', async () => {
   if (!file) return;
   const text = await file.text();
   try {
-    const data = JSON.parse(text);
-    if (Array.isArray(data)) {
-      tasks = sanitizeTasks(data);
+    let parsed = [];
+    if (text.trim().startsWith('[')) {
+      // JSON fallback
+      const data = JSON.parse(text);
+      if (Array.isArray(data)) parsed = data;
+    } else {
+      parsed = parseCSVToTasks(text);
+    }
+    if (Array.isArray(parsed)) {
+      tasks = sanitizeTasks(parsed);
       persist();
       render();
     }
@@ -333,6 +340,78 @@ function localYMD(d) {
   }
   el.setAttribute('datetime', now.toISOString().slice(0, 10));
 })();
+
+// CSV helpers
+function tasksToCSV(items) {
+  const headers = ['id','title','details','due','done','createdAt'];
+  const lines = [headers.join(',')];
+  for (const t of items) {
+    const row = [
+      t.id ?? '',
+      t.title ?? '',
+      t.details ?? '',
+      t.due ?? '',
+      String(!!t.done),
+      String(t.createdAt ?? '')
+    ].map(csvEscape);
+    lines.push(row.join(','));
+  }
+  return lines.join('\n');
+}
+
+function csvEscape(value) {
+  const s = String(value ?? '');
+  if (/[",\n]/.test(s)) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function parseCSVToTasks(text) {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n').filter(l => l.trim() !== '');
+  if (lines.length === 0) return [];
+  const headers = parseCSVLine(lines[0]).map(h => h.trim());
+  const idx = Object.fromEntries(headers.map((h,i)=>[h,i]));
+  const out = [];
+  for (let i=1;i<lines.length;i++) {
+    const cols = parseCSVLine(lines[i]);
+    const get = (name) => cols[idx[name]] ?? '';
+    const doneStr = String(get('done')).toLowerCase();
+    const created = Number(get('createdAt'));
+    out.push({
+      id: get('id') || crypto.randomUUID(),
+      title: get('title'),
+      details: get('details') || undefined,
+      due: get('due') || undefined,
+      done: doneStr === 'true' || doneStr === '1' || doneStr === 'yes',
+      createdAt: Number.isFinite(created) && created > 0 ? created : Date.now()
+    });
+  }
+  return out;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i+1] === '"') { current += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { result.push(current); current = ''; }
+      else { current += ch; }
+    }
+  }
+  result.push(current);
+  return result;
+}
 
 // Overdue notifications and app badge helpers
 function getOverdueTasks() {
