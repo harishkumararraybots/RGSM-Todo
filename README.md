@@ -53,6 +53,20 @@ Tasks are stored in `localStorage` under key `todo-pwa:v1:tasks`.
 3) Toggle DevTools > Network to Offline; refresh. The app should still load with your tasks.
 4) If the Install button appears, click it to install. Alternatively, use browser menu > Install App.
 
+### Install on iOS
+- Open the site in Safari (iOS only shows Add to Home Screen from Safari).
+- Tap Share (square with up arrow) → Add to Home Screen.
+- After installation, launch from the home screen; it will run standalone.
+
+Note: iOS does not fire the `beforeinstallprompt` event, so the in-app Install button won’t appear. The app shows a small tip under the header on iOS to guide this flow.
+
+### Install on Chrome (Desktop/Android)
+- If the app is eligible (served over HTTPS/localhost, has a manifest and a service worker with a fetch handler), you’ll see an Install option:
+	- Desktop: Chrome menu → Install Todo PWA, or the Omnibox install icon.
+	- Android: Chrome menu → Install App. You may also see a prompt after a short use.
+
+If you don’t see Install yet, interact with the page a little and try reloading once.
+
 ## Deploy to GitHub Pages (HTTPS)
 This repo includes a workflow at `.github/workflows/pages.yml` that deploys the site on every push to the `main` branch.
 
@@ -85,6 +99,8 @@ After the first successful deploy, open the URL in Safari on iOS and use Share �
 - Service worker updates: hard refresh twice or clear site data to grab latest SW.
 - If icons don’t appear when installed, ensure the PNG files actually exist and sizes match the manifest.
 - SW only works on localhost/HTTPS. Avoid opening `index.html` via file://.
+- For GitHub Pages project sites, your URL is `https://<you>.github.io/<repo>/`. This app’s `start_url` and `scope` are set to `"."` so it installs correctly under a subpath.
+- On iOS, there is no automatic install prompt. Use Safari → Share → Add to Home Screen.
 
 ## License
 MIT

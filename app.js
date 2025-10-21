@@ -40,6 +40,28 @@ installBtn?.addEventListener('click', async () => {
   deferredPrompt = null;
 });
 
+// Installed handler: hide button when installed
+window.addEventListener('appinstalled', () => {
+  installBtn.hidden = true;
+  deferredPrompt = null;
+});
+
+// iOS hint: beforeinstallprompt is not supported on iOS Safari/Chrome
+(() => {
+  const ua = window.navigator.userAgent || '';
+  const isIOS = /iphone|ipad|ipod/i.test(ua);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isIOS && !isStandalone) {
+    const tip = document.createElement('div');
+    tip.className = 'ios-install-tip';
+    tip.textContent = 'On iOS: Share → Add to Home Screen to install';
+    const header = document.querySelector('.app-header');
+    if (header && header.parentElement) {
+      header.insertAdjacentElement('afterend', tip);
+    }
+  }
+})();
+
 // Event listeners
 form.addEventListener('submit', (e) => {
   e.preventDefault();

@@ -42,6 +42,8 @@ body {
 
 .empty { text-align: center; color: var(--muted); margin-top: 24px; }
 
+.ios-install-tip { margin: 8px 16px; color: var(--muted); font-size: 0.9rem; }
+
 @media (max-width: 720px) {
   .add form { grid-template-columns: 1fr; }
 }
