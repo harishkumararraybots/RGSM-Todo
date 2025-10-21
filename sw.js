@@ -44,3 +44,19 @@ self.addEventListener('fetch', (event) => {
     }).catch(() => caches.match(req).then(cached => cached || caches.match('./index.html')))
   );
 });
+
+// Focus app when a notification is clicked
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const url = self.location.origin + '/';
+    for (const client of allClients) {
+      if ('focus' in client) {
+        client.focus();
+        return;
+      }
+    }
+    if (clients.openWindow) await clients.openWindow(url);
+  })());
+});

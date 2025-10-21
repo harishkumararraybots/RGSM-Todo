@@ -1,12 +1,13 @@
-# Todo PWA
+# RGSM Groups
 
-A simple offline-first Todo list Progressive Web App (PWA). Add, edit, complete, filter, search, export/import tasks. Works offline with a service worker and installs on desktop/mobile.
+A simple, offline-first Progressive Web App (PWA) for tasks. Add, edit, complete, filter, search, export/import tasks. Works offline with a service worker and installs on desktop/mobile.
 
 ## Features
 - Offline ready (service worker caches app shell)
 - Add/edit/delete tasks
 - Mark tasks done, clear completed
 - Due date with Today/Upcoming/Done filters
+- Overdue highlighting and optional local notifications
 - Search by title/details
 - Local storage persistence
 - Export/Import JSON
@@ -61,6 +62,16 @@ Tasks are stored in `localStorage` under key `todo-pwa:v1:tasks`.
 Note: iOS does not fire the `beforeinstallprompt` event, so the in-app Install button won’t appear. The app shows a small tip under the header on iOS to guide this flow.
 
 ### Install on Chrome (Desktop/Android)
+## Notifications
+This app can show a local notification for overdue tasks when you open it and grant permission.
+
+- Click "Enable notifications" in the header to grant permission.
+- When there are overdue tasks, a notification is shown once per task, and an app badge is set where supported.
+
+Platform notes:
+- Web Push (background, scheduled, or server-driven) requires a backend and VAPID/APNs setup and is not configured here.
+- iOS supports web notifications for installed PWAs on iOS 16.4+, but behavior varies. You may need to install first, then enable notifications.
+- Without push, notifications fire only when the app is open or becomes active; for true background reminders, a server is required.
 - If the app is eligible (served over HTTPS/localhost, has a manifest and a service worker with a fetch handler), you’ll see an Install option:
 	- Desktop: Chrome menu → Install Todo PWA, or the Omnibox install icon.
 	- Android: Chrome menu → Install App. You may also see a prompt after a short use.

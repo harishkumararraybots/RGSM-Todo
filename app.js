@@ -20,11 +20,20 @@ const exportBtn = document.getElementById('exportJson');
 const importBtn = document.getElementById('importJson');
 const importFile = document.getElementById('importFile');
 const installBtn = document.getElementById('installBtn');
+const notifyBtn = document.getElementById('notifyBtn');
+let swReg = null;
+const NOTIFIED_KEY = 'todo-pwa:v1:notified';
 
 // Service worker & PWA install
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js');
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      swReg = reg;
+      // Try setting app badge with current overdue count
+      updateAppBadge();
+      // After SW ready, check notifications if permission already granted
+      maybeNotifyOverdue();
+    });
   });
 }
 
@@ -38,6 +47,26 @@ installBtn?.addEventListener('click', async () => {
   deferredPrompt?.prompt();
   const { outcome } = await deferredPrompt?.userChoice || { outcome: 'dismissed' };
   deferredPrompt = null;
+});
+
+// Notifications opt-in
+notifyBtn?.addEventListener('click', async () => {
+  if (!('Notification' in window)) {
+    alert('Notifications are not supported in this browser.');
+    return;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      await maybeNotifyOverdue(true);
+      notifyBtn.textContent = 'Notifications enabled';
+      notifyBtn.disabled = true;
+    } else if (perm === 'denied') {
+      alert('Notifications are blocked. You can enable them in your browser settings.');
+    }
+  } catch {
+    // noop
+  }
 });
 
 // Installed handler: hide button when installed
@@ -169,7 +198,18 @@ function render() {
     const due = document.createElement('div');
     due.className = 'due';
     if (t.due) {
-      due.textContent = labelForDue(t.due);
+      const label = labelForDue(t.due);
+      due.textContent = label;
+      const todayStr = localYMD(new Date());
+      const isOverdue = t.due < todayStr && !t.done;
+      if (isOverdue) {
+        li.classList.add('overdue');
+        const badge = document.createElement('span');
+        badge.className = 'badge overdue';
+        badge.textContent = 'Overdue';
+        due.appendChild(document.createTextNode(' '));
+        due.appendChild(badge);
+      }
     } else {
       due.textContent = '';
     }
@@ -244,6 +284,7 @@ function beginEdit(id) {
 
 function persist() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  updateAppBadge();
 }
 function loadTasks() {
   try {
@@ -277,4 +318,66 @@ function localYMD(d) {
   const tzOffsetMs = d.getTimezoneOffset() * 60000;
   const local = new Date(d.getTime() - tzOffsetMs);
   return local.toISOString().slice(0, 10);
+}
+
+// Footer date: show a nice formatted date like "Mon, Oct 21, 2025"
+(() => {
+  const el = document.getElementById('today');
+  if (!el) return;
+  const now = new Date();
+  const opts = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+  try {
+    el.textContent = now.toLocaleDateString(undefined, opts);
+  } catch {
+    el.textContent = now.toDateString();
+  }
+  el.setAttribute('datetime', now.toISOString().slice(0, 10));
+})();
+
+// Overdue notifications and app badge helpers
+function getOverdueTasks() {
+  const todayStr = localYMD(new Date());
+  return tasks.filter(t => t.due && t.due < todayStr && !t.done);
+}
+
+async function maybeNotifyOverdue(force = false) {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || !swReg) return;
+    const overdue = getOverdueTasks();
+    if (overdue.length === 0) return;
+    const notified = loadNotified();
+    const toNotify = overdue.filter(t => force || !notified.has(t.id));
+    if (toNotify.length === 0) return;
+    for (const t of toNotify) {
+      await swReg.showNotification('Task overdue', {
+        body: t.title + (t.due ? ` (due ${t.due})` : ''),
+        icon: './assets/icons/icon-192.png',
+        badge: './assets/icons/icon-192.png',
+        tag: 'overdue-' + t.id,
+        data: { id: t.id }
+      });
+      notified.add(t.id);
+    }
+    saveNotified(notified);
+  } catch {}
+}
+
+function loadNotified() {
+  try {
+    const raw = localStorage.getItem(NOTIFIED_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch { return new Set(); }
+}
+function saveNotified(set) {
+  try { localStorage.setItem(NOTIFIED_KEY, JSON.stringify(Array.from(set))); } catch {}
+}
+
+function updateAppBadge() {
+  try {
+    const count = getOverdueTasks().length;
+    if ('setAppBadge' in navigator) {
+      if (count > 0) navigator.setAppBadge(count); else navigator.clearAppBadge();
+    }
+  } catch {}
 }

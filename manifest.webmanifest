@@ -1,7 +1,7 @@
 {
-  "name": "Todo PWA",
-  "short_name": "Todo",
-  "description": "A simple offline-first Todo list PWA",
+  "name": "RGSM Groups",
+  "short_name": "RGSM",
+  "description": "RGSM Groups — a simple offline-first todo app",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
