@@ -1,0 +1,47 @@
+/* Basic reset */
+* { box-sizing: border-box; }
+:root {
+  --bg: #0b1220;
+  --card: #111827;
+  --muted: #94a3b8;
+  --text: #e5e7eb;
+  --primary: #22c55e;
+  --danger: #ef4444;
+  --chip: #1f2937;
+}
+html, body { height: 100%; }
+body {
+  margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+  background: var(--bg); color: var(--text);
+  display: grid; grid-template-rows: auto 1fr auto;
+}
+.app-header, .app-footer { padding: 12px 16px; background: var(--card); border-bottom: 1px solid #0f172a; }
+.app-footer { border-top: 1px solid #0f172a; border-bottom: none; }
+.app-header { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+.container { max-width: 840px; margin: 0 auto; padding: 16px; width: 100%; }
+.add form { display: grid; grid-template-columns: 1fr 1fr 160px auto; gap: 8px; }
+.add input, .search input { padding: 10px 12px; border: 1px solid #334155; border-radius: 8px; background: #0b1324; color: var(--text); }
+.controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.filters { display: flex; gap: 8px; }
+.chip { background: var(--chip); color: var(--text); border: 1px solid #293241; border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.chip.active { outline: 2px solid var(--primary); }
+.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.item { background: var(--card); border: 1px solid #233045; border-radius: 10px; padding: 10px; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.item .meta { display: flex; flex-direction: column; gap: 2px; }
+.item .title { font-weight: 600; }
+.item .details { color: var(--muted); font-size: 0.9rem; }
+.item .due { color: #93c5fd; font-size: 0.85rem; }
+.item .actions { display: flex; gap: 6px; }
+
+.btn { padding: 10px 14px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
+.btn.primary { background: var(--primary); color: black; }
+.btn.secondary { background: #334155; color: var(--text); }
+.btn.outline { background: transparent; border: 1px solid #3b4252; color: var(--text); }
+.btn.danger { background: var(--danger); color: white; }
+.btn.danger.outline { border-color: var(--danger); background: transparent; color: var(--danger); }
+
+.empty { text-align: center; color: var(--muted); margin-top: 24px; }
+
+@media (max-width: 720px) {
+  .add form { grid-template-columns: 1fr; }
+}

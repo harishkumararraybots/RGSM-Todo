@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./assets/icons/icon-192.png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png" />
+  <title>Todo PWA</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Todo PWA</h1>
+    <button id="installBtn" class="btn secondary" hidden>Install</button>
+  </header>
+
+  <main class="container">
+    <section class="add">
+      <form id="todoForm" autocomplete="off">
+        <input id="title" name="title" type="text" placeholder="What needs doing?" required maxlength="120" />
+        <input id="details" name="details" type="text" placeholder="Details (optional)" maxlength="300" />
+        <input id="due" name="due" type="date" />
+        <button type="submit" class="btn primary">Add</button>
+      </form>
+    </section>
+
+    <section class="controls">
+      <div class="filters" role="tablist" aria-label="Filters">
+        <button class="chip active" data-filter="all" role="tab" aria-selected="true">All</button>
+        <button class="chip" data-filter="today" role="tab">Today</button>
+        <button class="chip" data-filter="upcoming" role="tab">Upcoming</button>
+        <button class="chip" data-filter="done" role="tab">Done</button>
+      </div>
+      <div class="search">
+        <input id="search" type="search" placeholder="Search tasks..." />
+      </div>
+    </section>
+
+    <section>
+      <ul id="list" class="list" aria-live="polite"></ul>
+      <div class="empty" id="emptyState" hidden>No tasks yet — add your first above.</div>
+    </section>
+
+    <section class="actions">
+      <button id="clearDone" class="btn danger outline">Clear completed</button>
+      <button id="exportJson" class="btn outline">Export</button>
+      <input id="importFile" type="file" accept="application/json" hidden />
+      <button id="importJson" class="btn outline">Import</button>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <small>Offline ready • Data stored locally</small>
+  </footer>
+
+  <script src="./app.js" type="module"></script>
+</body>
+</html>

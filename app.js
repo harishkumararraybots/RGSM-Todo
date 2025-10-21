@@ -1,0 +1,258 @@
+// Todo PWA - app logic
+// Data shape: { id: string, title: string, details?: string, due?: 'YYYY-MM-DD', done: boolean, createdAt: number }
+
+const STORAGE_KEY = 'todo-pwa:v1:tasks';
+let tasks = loadTasks();
+let currentFilter = 'all';
+let deferredPrompt = null;
+
+// Elements
+const form = document.getElementById('todoForm');
+const titleEl = document.getElementById('title');
+const detailsEl = document.getElementById('details');
+const dueEl = document.getElementById('due');
+const listEl = document.getElementById('list');
+const emptyEl = document.getElementById('emptyState');
+const filterEls = Array.from(document.querySelectorAll('.chip[data-filter]'));
+const searchEl = document.getElementById('search');
+const clearDoneBtn = document.getElementById('clearDone');
+const exportBtn = document.getElementById('exportJson');
+const importBtn = document.getElementById('importJson');
+const importFile = document.getElementById('importFile');
+const installBtn = document.getElementById('installBtn');
+
+// Service worker & PWA install
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js');
+  });
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn.hidden = false;
+});
+installBtn?.addEventListener('click', async () => {
+  installBtn.hidden = true;
+  deferredPrompt?.prompt();
+  const { outcome } = await deferredPrompt?.userChoice || { outcome: 'dismissed' };
+  deferredPrompt = null;
+});
+
+// Event listeners
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const title = titleEl.value.trim();
+  const details = detailsEl.value.trim();
+  const due = dueEl.value || undefined;
+  if (!title) return;
+  const task = { id: crypto.randomUUID(), title, details: details || undefined, due, done: false, createdAt: Date.now() };
+  tasks.unshift(task);
+  persist();
+  form.reset();
+  render();
+  titleEl.focus();
+});
+
+filterEls.forEach(el => el.addEventListener('click', () => {
+  filterEls.forEach(f => f.classList.remove('active'));
+  el.classList.add('active');
+  currentFilter = el.dataset.filter;
+  render();
+}));
+
+searchEl.addEventListener('input', () => render());
+clearDoneBtn.addEventListener('click', () => {
+  tasks = tasks.filter(t => !t.done);
+  persist();
+  render();
+});
+exportBtn.addEventListener('click', () => {
+  const data = JSON.stringify(tasks, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'todo-export.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+importBtn.addEventListener('click', () => importFile.click());
+importFile.addEventListener('change', async () => {
+  const file = importFile.files?.[0];
+  if (!file) return;
+  const text = await file.text();
+  try {
+    const data = JSON.parse(text);
+    if (Array.isArray(data)) {
+      tasks = sanitizeTasks(data);
+      persist();
+      render();
+    }
+  } catch {}
+  importFile.value = '';
+});
+
+// Rendering
+function render() {
+  const search = searchEl.value.trim().toLowerCase();
+  const todayStr = localYMD(new Date());
+
+  let filtered = tasks;
+  switch (currentFilter) {
+    case 'today':
+      filtered = tasks.filter(t => t.due === todayStr && !t.done);
+      break;
+    case 'upcoming':
+      filtered = tasks.filter(t => t.due && t.due > todayStr && !t.done);
+      break;
+    case 'done':
+      filtered = tasks.filter(t => t.done);
+      break;
+  }
+  if (search) {
+    filtered = filtered.filter(t =>
+      t.title.toLowerCase().includes(search) || (t.details?.toLowerCase().includes(search))
+    );
+  }
+
+  listEl.innerHTML = '';
+  if (filtered.length === 0) {
+    emptyEl.hidden = false;
+    return;
+  } else {
+    emptyEl.hidden = true;
+  }
+
+  for (const t of filtered) {
+    const li = document.createElement('li');
+    li.className = 'item';
+    li.dataset.id = t.id;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = t.done;
+    checkbox.addEventListener('change', () => toggleDone(t.id, checkbox.checked));
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = t.title;
+
+    const details = document.createElement('div');
+    details.className = 'details';
+    details.textContent = t.details || '';
+
+    const due = document.createElement('div');
+    due.className = 'due';
+    if (t.due) {
+      due.textContent = labelForDue(t.due);
+    } else {
+      due.textContent = '';
+    }
+
+    meta.appendChild(title);
+    if (t.details) meta.appendChild(details);
+    if (t.due) meta.appendChild(due);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn outline';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => beginEdit(t.id));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn danger outline';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => removeTask(t.id));
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+
+    li.appendChild(checkbox);
+    li.appendChild(meta);
+    li.appendChild(actions);
+
+    listEl.appendChild(li);
+  }
+}
+
+function labelForDue(yyyyMmDd) {
+  const todayStr = localYMD(new Date());
+  if (yyyyMmDd === todayStr) return 'Due today';
+  if (yyyyMmDd < todayStr) {
+    const d = new Date(yyyyMmDd);
+    return `Overdue: ${d.toLocaleDateString()}`;
+  }
+  const d = new Date(yyyyMmDd);
+  return `Due ${d.toLocaleDateString()}`;
+}
+
+function toggleDone(id, done) {
+  const t = tasks.find(t => t.id === id);
+  if (!t) return;
+  t.done = done;
+  persist();
+  // keep item in place but optional re-render for filters
+  render();
+}
+
+function removeTask(id) {
+  tasks = tasks.filter(t => t.id !== id);
+  persist();
+  render();
+}
+
+function beginEdit(id) {
+  const t = tasks.find(t => t.id === id);
+  if (!t) return;
+  const newTitle = prompt('Edit title', t.title) || t.title;
+  const newDetails = prompt('Edit details', t.details ?? '') ?? t.details;
+  const newDue = prompt('Edit due date (YYYY-MM-DD)', t.due ?? '') ?? t.due;
+  if (!newTitle.trim()) return;
+  t.title = newTitle.trim();
+  t.details = newDetails?.trim() || undefined;
+  t.due = (newDue?.trim()) || undefined;
+  persist();
+  render();
+}
+
+function persist() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+}
+function loadTasks() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    return sanitizeTasks(data);
+  } catch {
+    return [];
+  }
+}
+function sanitizeTasks(arr) {
+  return arr
+    .filter(x => x && typeof x === 'object')
+    .map(x => ({
+      id: String(x.id || crypto.randomUUID()),
+      title: String(x.title || '').slice(0, 120),
+      details: x.details ? String(x.details).slice(0, 300) : undefined,
+      due: x.due ? String(x.due) : undefined,
+      done: Boolean(x.done),
+      createdAt: Number(x.createdAt || Date.now()),
+    }))
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+// Initial render
+render();
+
+// Utilities
+function localYMD(d) {
+  const tzOffsetMs = d.getTimezoneOffset() * 60000;
+  const local = new Date(d.getTime() - tzOffsetMs);
+  return local.toISOString().slice(0, 10);
+}

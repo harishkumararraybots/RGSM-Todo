@@ -1,0 +1,1 @@
+Placeholder for PWA icons. We'll generate simple PNGs next.
