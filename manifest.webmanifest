@@ -1,7 +1,7 @@
 {
-  "name": "RGSM Groups",
+  "name": "RGSM",
   "short_name": "RGSM",
-  "description": "RGSM Groups — a simple offline-first todo app",
+  "description": "RGSM — a simple offline-first todo app",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

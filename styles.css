@@ -31,6 +31,13 @@ body {
 .footer-meta .made-by { color: #cbd5e1; font-weight: 600; }
 .footer-meta .dot { color: #60a5fa; }
 .footer-meta time { color: #93c5fd; }
+
+/* Improve mobile date readability */
+input[type="date"] { font-size: 16px; min-height: 44px; }
+@media (max-width: 720px) {
+  .footer-meta { font-size: 1rem; }
+  .footer-meta time { font-size: 1rem; }
+}
 .app-header { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
 .header-actions { display: flex; align-items: center; gap: 8px; }
 .brand { font-weight: 800; letter-spacing: 0.2px; background: linear-gradient(90deg, #a78bfa, #60a5fa, #34d399); -webkit-background-clip: text; background-clip: text; color: transparent; }
