@@ -42,6 +42,7 @@ input[type="date"] { font-size: 16px; min-height: 44px; }
 .header-actions { display: flex; align-items: center; gap: 8px; }
 .brand { font-weight: 800; letter-spacing: 0.2px; background: linear-gradient(90deg, #a78bfa, #60a5fa, #34d399); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .container { max-width: 840px; margin: 0 auto; padding: 16px; width: 100%; }
+.container { padding-bottom: 96px; }
 .add { display: none; }
 .search input { padding: 12px 14px; border: 1px solid #334155; border-radius: 10px; background: #0b1324; color: var(--text); box-shadow: 0 0 0 0 transparent; outline: none; transition: box-shadow .15s ease, border-color .15s ease, background .15s ease; }
 .search input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px #1d4ed81a; background: #0b152a; }
@@ -102,7 +103,17 @@ input[type="checkbox"] { width: 18px; height: 18px; }
 .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
 
 /* Floating action button */
-.fab { position: fixed; right: 20px; bottom: 24px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(180deg, var(--primary) 0%, var(--primary-600) 100%); color: #051b06; border: none; font-size: 32px; font-weight: 900; cursor: pointer; box-shadow: 0 10px 22px #072a0d66; z-index: 1000; }
+.fab { position: fixed; right: 16px; bottom: 20px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(180deg, var(--primary) 0%, var(--primary-600) 100%); color: #051b06; border: none; font-size: 32px; font-weight: 900; cursor: pointer; box-shadow: 0 10px 22px #072a0d66; z-index: 1000; touch-action: manipulation; }
+.fab:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+@supports (bottom: env(safe-area-inset-bottom)) {
+  .fab { bottom: calc(env(safe-area-inset-bottom) + 16px); right: calc(env(safe-area-inset-right) + 16px); }
+}
+@media (max-width: 480px) {
+  .fab { width: 52px; height: 52px; font-size: 28px; right: 14px; bottom: 18px; }
+}
+@media (max-width: 360px) {
+  .fab { width: 48px; height: 48px; font-size: 26px; right: 12px; bottom: 16px; }
+}
 .fab:active { transform: translateY(1px); }
 
 /* Modal */
