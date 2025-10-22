@@ -201,6 +201,7 @@ function render() {
     const li = document.createElement('li');
     li.className = 'item';
     li.dataset.id = t.id;
+    if (t.done) li.classList.add('done');
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
