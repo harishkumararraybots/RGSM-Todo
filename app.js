@@ -21,6 +21,12 @@ const importBtn = document.getElementById('importJson');
 const importFile = document.getElementById('importFile');
 const installBtn = document.getElementById('installBtn');
 const notifyBtn = document.getElementById('notifyBtn');
+const fabAdd = document.getElementById('fabAdd');
+const addModal = document.getElementById('addModal');
+const dashOverdueEl = document.getElementById('dashOverdue');
+const dashPendingEl = document.getElementById('dashPending');
+const dashTodayEl = document.getElementById('dashToday');
+const dashDoneEl = document.getElementById('dashDone');
 let swReg = null;
 const NOTIFIED_KEY = 'todo-pwa:v1:notified';
 
@@ -92,6 +98,13 @@ window.addEventListener('appinstalled', () => {
 })();
 
 // Event listeners
+// Modal open/close
+fabAdd?.addEventListener('click', openAddModal);
+document.querySelectorAll('[data-close]')?.forEach(el => el.addEventListener('click', closeAddModal));
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeAddModal();
+});
+
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   const title = titleEl.value.trim();
@@ -103,7 +116,7 @@ form.addEventListener('submit', (e) => {
   persist();
   form.reset();
   render();
-  titleEl.focus();
+  closeAddModal();
 });
 
 filterEls.forEach(el => el.addEventListener('click', () => {
@@ -154,6 +167,9 @@ importFile.addEventListener('change', async () => {
 function render() {
   const search = searchEl.value.trim().toLowerCase();
   const todayStr = localYMD(new Date());
+
+  // Update dashboard counts (always based on full task list)
+  updateDashboard();
 
   let filtered = tasks;
   switch (currentFilter) {
@@ -340,6 +356,32 @@ function localYMD(d) {
   }
   el.setAttribute('datetime', now.toISOString().slice(0, 10));
 })();
+
+function updateDashboard() {
+  if (!dashOverdueEl) return; // dashboard not present
+  const todayStr = localYMD(new Date());
+  const overdue = tasks.filter(t => t.due && t.due < todayStr && !t.done).length;
+  const pending = tasks.filter(t => !t.done).length;
+  const today = tasks.filter(t => t.due === todayStr && !t.done).length;
+  const done = tasks.filter(t => t.done).length;
+  dashOverdueEl.textContent = String(overdue);
+  dashPendingEl.textContent = String(pending);
+  dashTodayEl.textContent = String(today);
+  dashDoneEl.textContent = String(done);
+}
+
+function openAddModal() {
+  if (!addModal) return;
+  addModal.hidden = false;
+  addModal.setAttribute('aria-hidden', 'false');
+  // focus the title input
+  setTimeout(() => titleEl?.focus(), 0);
+}
+function closeAddModal() {
+  if (!addModal) return;
+  addModal.hidden = true;
+  addModal.setAttribute('aria-hidden', 'true');
+}
 
 // CSV helpers
 function tasksToCSV(items) {

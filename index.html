@@ -24,13 +24,23 @@
   </header>
 
   <main class="container">
-    <section class="add">
-      <form id="todoForm" autocomplete="off">
-        <input id="title" name="title" type="text" placeholder="What needs doing?" required maxlength="120" />
-        <input id="details" name="details" type="text" placeholder="Details (optional)" maxlength="300" />
-        <input id="due" name="due" type="date" />
-        <button type="submit" class="btn primary">Add</button>
-      </form>
+    <section class="dashboard" aria-label="Task summary">
+      <div class="dash-card">
+        <div class="dash-title">Overdue</div>
+        <div class="dash-value" id="dashOverdue">0</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-title">Pending</div>
+        <div class="dash-value" id="dashPending">0</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-title">Today</div>
+        <div class="dash-value" id="dashToday">0</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-title">Done</div>
+        <div class="dash-value" id="dashDone">0</div>
+      </div>
     </section>
 
     <section class="controls">
@@ -47,7 +57,7 @@
 
     <section>
       <ul id="list" class="list" aria-live="polite"></ul>
-      <div class="empty" id="emptyState" hidden>No tasks yet — add your first above.</div>
+      <div class="empty" id="emptyState" hidden>No tasks yet — add your first with the + button.</div>
     </section>
 
     <section class="actions">
@@ -57,6 +67,38 @@
       <button id="importJson" class="btn outline">Import</button>
     </section>
   </main>
+
+  <!-- Floating add button -->
+  <button id="fabAdd" class="fab" aria-label="Add task" title="Add task">+</button>
+
+  <!-- Add task modal -->
+  <div id="addModal" class="modal" hidden aria-hidden="true" role="dialog" aria-labelledby="addModalTitle">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-dialog">
+      <header class="modal-header">
+        <h2 id="addModalTitle">Add task</h2>
+        <button class="modal-close" data-close aria-label="Close">×</button>
+      </header>
+      <form id="todoForm" class="modal-body" autocomplete="off">
+        <label>
+          <span class="label">Title</span>
+          <input id="title" name="title" type="text" placeholder="What needs doing?" required maxlength="120" />
+        </label>
+        <label>
+          <span class="label">Details</span>
+          <input id="details" name="details" type="text" placeholder="Details (optional)" maxlength="300" />
+        </label>
+        <label>
+          <span class="label">Due date</span>
+          <input id="due" name="due" type="date" />
+        </label>
+        <footer class="modal-actions">
+          <button type="button" class="btn outline" data-close>Cancel</button>
+          <button type="submit" class="btn primary">Add task</button>
+        </footer>
+      </form>
+    </div>
+  </div>
 
   <footer class="app-footer">
     <small class="footer-meta">
