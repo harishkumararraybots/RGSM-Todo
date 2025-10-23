@@ -79,9 +79,16 @@
       </div>
     </section>
 
-    <section>
+    <section hidden>
       <ul id="list" class="list" aria-live="polite"></ul>
       <div class="empty" id="emptyState" hidden>No tasks yet — add your first with the + button.</div>
+    </section>
+
+    <!-- Table view -->
+    <section id="tableSection">
+      <div class="table-wrap">
+        <table id="taskTable" class="tasks-table" aria-label="Tasks table"></table>
+      </div>
     </section>
 
     <section class="actions">

@@ -6,6 +6,7 @@ const STATUS_VALUES = ['Not started', 'in-progress', 'pending', 'Blocked', 'comp
 let tasks = loadTasks();
 let currentFilter = 'all';
 let deferredPrompt = null;
+let currentView = 'table'; // default to table view only
 
 // Elements
 const form = document.getElementById('todoForm');
@@ -14,6 +15,8 @@ const detailsEl = document.getElementById('details');
 const dueEl = document.getElementById('due');
 const listEl = document.getElementById('list');
 const emptyEl = document.getElementById('emptyState');
+const tableSectionEl = document.getElementById('tableSection');
+const taskTableEl = document.getElementById('taskTable');
 const filterEls = Array.from(document.querySelectorAll('.chip[data-filter]'));
 const searchEl = document.getElementById('search');
 const clearDoneBtn = document.getElementById('clearDone');
@@ -24,6 +27,28 @@ const installBtn = document.getElementById('installBtn');
 const notifyBtn = document.getElementById('notifyBtn');
 const fabAdd = document.getElementById('fabAdd');
 const addModal = document.getElementById('addModal');
+// View toggle
+const viewListBtn = document.getElementById('viewList');
+const viewTableBtn = document.getElementById('viewTable');
+viewListBtn?.addEventListener('click', () => {
+  setView('list');
+});
+viewTableBtn?.addEventListener('click', () => {
+  setView('table');
+});
+
+function setView(view) {
+  currentView = view;
+  // Update UI states
+  if (viewListBtn && viewTableBtn) {
+    const isList = view === 'list';
+    viewListBtn.classList.toggle('active', isList);
+    viewTableBtn.classList.toggle('active', !isList);
+    viewListBtn.setAttribute('aria-selected', String(isList));
+    viewTableBtn.setAttribute('aria-selected', String(!isList));
+  }
+  render();
+}
 const dashOverdueEl = document.getElementById('dashOverdue');
 const dashPendingEl = document.getElementById('dashPending');
 const dashTodayEl = document.getElementById('dashToday');
@@ -230,15 +255,27 @@ function render() {
     );
   }
 
+  if (currentView === 'list') {
+    renderList(filtered);
+  } else {
+    renderTable(filtered);
+  }
+}
+
+function renderList(items) {
   listEl.innerHTML = '';
-  if (filtered.length === 0) {
+  // Toggle containers
+  listEl.parentElement?.removeAttribute('hidden');
+  if (tableSectionEl) tableSectionEl.hidden = true;
+
+  if (items.length === 0) {
     emptyEl.hidden = false;
     return;
   } else {
     emptyEl.hidden = true;
   }
 
-  for (const t of filtered) {
+  for (const t of items) {
     const li = document.createElement('li');
     li.className = 'item';
     li.dataset.id = t.id;
@@ -260,8 +297,8 @@ function render() {
     if (t.due) {
       const label = labelForDue(t.due, t.status);
       due.textContent = label;
-      const todayStr = localYMD(new Date());
-      const isOverdue = t.due < todayStr && t.status !== 'completed';
+      const todayStr2 = localYMD(new Date());
+      const isOverdue = t.due < todayStr2 && t.status !== 'completed';
       if (isOverdue) {
         li.classList.add('overdue');
         const badge = document.createElement('span');
@@ -281,7 +318,6 @@ function render() {
     const actions = document.createElement('div');
     actions.className = 'actions';
 
-    // Status dropdown (right side)
     const statusSelect = document.createElement('select');
     statusSelect.className = 'status-select';
     for (const s of STATUS_VALUES) {
@@ -311,6 +347,65 @@ function render() {
 
     listEl.appendChild(li);
   }
+}
+
+function renderTable(items) {
+  // Toggle containers
+  if (tableSectionEl) tableSectionEl.hidden = false;
+  // Hide list container section
+  listEl.parentElement?.setAttribute('hidden', '');
+
+  // Empty state
+  if (items.length === 0) {
+    taskTableEl.innerHTML = '';
+    emptyEl.hidden = false;
+    return;
+  } else {
+    emptyEl.hidden = true;
+  }
+
+  const header = `
+    <thead>
+      <tr>
+        <th style="width:28%">Title</th>
+        <th style="width:32%">Details</th>
+        <th style="width:14%">Due</th>
+        <th style="width:16%">Status</th>
+        <th style="width:10%; text-align:right">Actions</th>
+      </tr>
+    </thead>`;
+
+  const rows = items.map(t => {
+    const dueLabel = t.due ? labelForDue(t.due, t.status) : '';
+    const isOverdue = t.due ? (t.due < localYMD(new Date()) && t.status !== 'completed') : false;
+    const statusOptions = STATUS_VALUES.map(s => `<option value="${s}" ${((t.status||'Not started')===s)?'selected':''}>${s}</option>`).join('');
+    return `
+      <tr data-id="${t.id}">
+        <td class="col-title">${escapeHtml(t.title)}</td>
+        <td class="col-details">${escapeHtml(t.details || '')}</td>
+        <td class="col-due">${dueLabel}${isOverdue? ' <span class="badge overdue">Overdue</span>':''}</td>
+        <td>
+          <select class="status-select" data-action="status">${statusOptions}</select>
+        </td>
+        <td class="col-actions">
+          <button class="btn outline" data-action="edit">Edit</button>
+          <button class="btn danger outline" data-action="delete">Delete</button>
+        </td>
+      </tr>`;
+  }).join('');
+
+  taskTableEl.innerHTML = `${header}<tbody>${rows}</tbody>`;
+
+  // Wire row actions
+  taskTableEl.querySelectorAll('tr[data-id]').forEach(tr => {
+    const id = tr.getAttribute('data-id');
+    const statusSelect = tr.querySelector('select[data-action="status"]');
+    const editBtn = tr.querySelector('button[data-action="edit"]');
+    const delBtn = tr.querySelector('button[data-action="delete"]');
+    statusSelect?.addEventListener('change', () => updateStatus(id, statusSelect.value));
+    editBtn?.addEventListener('click', () => beginEdit(id));
+    delBtn?.addEventListener('click', () => removeTask(id));
+  });
 }
 
 function labelForDue(yyyyMmDd, status) {
@@ -394,6 +489,15 @@ function localYMD(d) {
   const tzOffsetMs = d.getTimezoneOffset() * 60000;
   const local = new Date(d.getTime() - tzOffsetMs);
   return local.toISOString().slice(0, 10);
+}
+
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Footer date: show a nice formatted date like "Mon, Oct 21, 2025"
