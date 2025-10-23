@@ -7,6 +7,7 @@ let tasks = loadTasks();
 let currentFilter = 'all';
 let deferredPrompt = null;
 let currentView = 'table'; // default to table view only
+let sortState = { key: null, dir: 'asc' }; // { key: 'title'|'due'|'status'|null, dir: 'asc'|'desc' }
 
 // Elements
 const form = document.getElementById('todoForm');
@@ -255,10 +256,11 @@ function render() {
     );
   }
 
+  const sorted = applySort(filtered);
   if (currentView === 'list') {
-    renderList(filtered);
+    renderList(sorted);
   } else {
-    renderTable(filtered);
+    renderTable(sorted);
   }
 }
 
@@ -367,10 +369,10 @@ function renderTable(items) {
   const header = `
     <thead>
       <tr>
-        <th>Title</th>
+        <th class="sortable" data-sort-key="title">Title</th>
         <th>Details</th>
-        <th>Due</th>
-        <th>Status</th>
+        <th class="sortable" data-sort-key="due">Due</th>
+        <th class="sortable" data-sort-key="status">Status</th>
         <th style="text-align:right">Actions</th>
       </tr>
     </thead>`;
@@ -381,15 +383,19 @@ function renderTable(items) {
     const statusOptions = STATUS_VALUES.map(s => `<option value="${s}" ${((t.status||'Not started')===s)?'selected':''}>${s}</option>`).join('');
     return `
       <tr data-id="${t.id}">
-        <td class="col-title">${escapeHtml(t.title)}</td>
-        <td class="col-details">${escapeHtml(t.details || '')}</td>
-        <td class="col-due">${dueLabel}${isOverdue? ' <span class="badge overdue">Overdue</span>':''}</td>
-        <td>
+        <td class="col-title" data-label="Title">${escapeHtml(t.title)}</td>
+        <td class="col-details" data-label="Details">${escapeHtml(t.details || '')}</td>
+        <td class="col-due" data-label="Due">
+          <span class="due-full">${dueLabel}</span>
+          <span class="due-short">${t.due ? escapeHtml(t.due) : ''}</span>
+          ${isOverdue? ' <span class="badge overdue">Overdue</span>':''}
+        </td>
+        <td data-label="Status">
           <select class="status-select" data-action="status">${statusOptions}</select>
         </td>
-        <td class="col-actions">
-          <button class="btn outline" data-action="edit">Edit</button>
-          <button class="btn danger outline" data-action="delete">Delete</button>
+        <td class="col-actions" data-label="Actions">
+          <button class="btn outline" data-action="edit" aria-label="Edit task">Edit</button>
+          <button class="btn danger outline" data-action="delete" aria-label="Delete task">Delete</button>
         </td>
       </tr>`;
   }).join('');
@@ -406,6 +412,47 @@ function renderTable(items) {
     editBtn?.addEventListener('click', () => beginEdit(id));
     delBtn?.addEventListener('click', () => removeTask(id));
   });
+
+  // Wire sorting on header
+  const ths = taskTableEl.querySelectorAll('thead th.sortable');
+  ths.forEach(th => {
+    const key = th.getAttribute('data-sort-key');
+    th.addEventListener('click', () => {
+      if (sortState.key === key) {
+        sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortState.key = key;
+        sortState.dir = 'asc';
+      }
+      render();
+    });
+    th.classList.toggle('sorted-asc', sortState.key === key && sortState.dir === 'asc');
+    th.classList.toggle('sorted-desc', sortState.key === key && sortState.dir === 'desc');
+  });
+}
+
+function applySort(items) {
+  if (!sortState.key) return items;
+  const dir = sortState.dir === 'desc' ? -1 : 1;
+  const copy = items.slice();
+  switch (sortState.key) {
+    case 'title':
+      copy.sort((a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' }) * dir);
+      break;
+    case 'due': {
+      const toKey = (t) => t.due ? t.due : '\uffff'; // undefined last
+      copy.sort((a, b) => (toKey(a) > toKey(b) ? 1 : toKey(a) < toKey(b) ? -1 : 0) * dir);
+      break;
+    }
+    case 'status': {
+      const idx = (t) => STATUS_VALUES.indexOf(t.status || 'Not started');
+      copy.sort((a, b) => (idx(a) - idx(b)) * dir);
+      break;
+    }
+    default:
+      return items;
+  }
+  return copy;
 }
 
 function labelForDue(yyyyMmDd, status) {

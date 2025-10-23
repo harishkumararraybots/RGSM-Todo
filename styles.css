@@ -1,3 +1,7 @@
+.tasks-table thead th.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 22px; }
+.tasks-table thead th.sortable::after { content: ''; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); opacity: 0.5; }
+.tasks-table thead th.sortable.sorted-asc::after { content: '▲'; opacity: 0.9; }
+.tasks-table thead th.sortable.sorted-desc::after { content: '▼'; opacity: 0.9; }
 /* Basic reset */
 * { box-sizing: border-box; }
 :root {
@@ -154,6 +158,29 @@ input[type="checkbox"] { width: 18px; height: 18px; }
   /* Allow title/due to use space better */
   .tasks-table .col-title { word-break: break-word; }
 }
+
+/* Extra-small screens: transform table rows into cards */
+@media (max-width: 480px) {
+  .tasks-table { border-collapse: separate; border-spacing: 0; }
+  .tasks-table thead { display: none; }
+  .tasks-table tbody { display: block; }
+  .tasks-table tbody tr { display: block; border: 1px solid #233045; border-radius: 12px; margin: 10px 0; overflow: hidden; background: linear-gradient(180deg, #0f172a 0%, #0f182c 100%); }
+  .tasks-table tbody td { display: grid; grid-template-columns: 120px 1fr; gap: 8px; border-bottom: 1px solid #1e2b45; }
+  .tasks-table tbody tr:last-child td:last-child { border-bottom: none; }
+  .tasks-table tbody td::before { content: attr(data-label); color: var(--muted); font-weight: 600; }
+  .tasks-table .col-actions { text-align: left; }
+  /* Icon-only buttons for actions */
+  .tasks-table [data-action="edit"], .tasks-table [data-action="delete"] { font-size: 0; padding: 8px; min-width: 36px; }
+  .tasks-table [data-action="edit"]::after { content: '✎'; font-size: 16px; }
+  .tasks-table [data-action="delete"]::after { content: '🗑'; font-size: 16px; }
+  /* Due label: compact */
+  .tasks-table .due-full { display: none; }
+  .tasks-table .due-short { display: inline; }
+}
+
+/* Default: show full due text, hide compact */
+.tasks-table .due-full { display: inline; }
+.tasks-table .due-short { display: none; }
 
 /* Status dropdown styling */
 .status-select {
