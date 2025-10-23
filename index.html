@@ -24,7 +24,7 @@
   </header>
 
   <main class="container">
-    <section class="dashboard" aria-label="Task summary">
+  <section id="dashboard" class="dashboard compact" aria-label="Task summary">
       <div class="dash-card">
         <div class="dash-title">Overdue</div>
         <div class="dash-value" id="dashOverdue">0</div>
@@ -41,7 +41,31 @@
         <div class="dash-title">Done</div>
         <div class="dash-value" id="dashDone">0</div>
       </div>
+      <!-- Status breakdown -->
+      <div class="dash-card">
+        <div class="dash-title">Not started</div>
+        <div class="dash-value" id="dashStatusNotStarted">0</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-title">In progress</div>
+        <div class="dash-value" id="dashStatusInProgress">0</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-title">Pending</div>
+        <div class="dash-value" id="dashStatusPending">0</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-title">Blocked</div>
+        <div class="dash-value" id="dashStatusBlocked">0</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-title">Completed</div>
+        <div class="dash-value" id="dashStatusCompleted">0</div>
+      </div>
     </section>
+    <div class="dash-controls" style="display:flex; justify-content:flex-end; margin-top:4px;">
+      <button id="dashToggle" class="btn outline tiny" aria-expanded="false" aria-controls="dashboard">Show status breakdown</button>
+    </div>
 
     <section class="controls">
       <div class="filters" role="tablist" aria-label="Filters">

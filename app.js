@@ -1,7 +1,8 @@
 // Todo PWA - app logic
-// Data shape: { id: string, title: string, details?: string, due?: 'YYYY-MM-DD', done: boolean, createdAt: number }
+// Data shape: { id: string, title: string, details?: string, due?: 'YYYY-MM-DD', status: 'Not started'|'in-progress'|'pending'|'Blocked'|'completed', createdAt: number }
 
 const STORAGE_KEY = 'todo-pwa:v1:tasks';
+const STATUS_VALUES = ['Not started', 'in-progress', 'pending', 'Blocked', 'completed'];
 let tasks = loadTasks();
 let currentFilter = 'all';
 let deferredPrompt = null;
@@ -27,6 +28,14 @@ const dashOverdueEl = document.getElementById('dashOverdue');
 const dashPendingEl = document.getElementById('dashPending');
 const dashTodayEl = document.getElementById('dashToday');
 const dashDoneEl = document.getElementById('dashDone');
+const dashboardEl = document.getElementById('dashboard');
+const dashToggleBtn = document.getElementById('dashToggle');
+// Status dashboard elements
+const dashStatusNotStartedEl = document.getElementById('dashStatusNotStarted');
+const dashStatusInProgressEl = document.getElementById('dashStatusInProgress');
+const dashStatusPendingEl = document.getElementById('dashStatusPending');
+const dashStatusBlockedEl = document.getElementById('dashStatusBlocked');
+const dashStatusCompletedEl = document.getElementById('dashStatusCompleted');
 let swReg = null;
 const NOTIFIED_KEY = 'todo-pwa:v1:notified';
 
@@ -81,6 +90,15 @@ window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
 });
 
+// Dashboard expand/collapse toggle (no horizontal scroll)
+dashToggleBtn?.addEventListener('click', () => {
+  if (!dashboardEl) return;
+  dashboardEl.classList.toggle('compact');
+  const expanded = !dashboardEl.classList.contains('compact');
+  dashToggleBtn.textContent = expanded ? 'Hide status breakdown' : 'Show status breakdown';
+  dashToggleBtn.setAttribute('aria-expanded', String(expanded));
+});
+
 // iOS hint: beforeinstallprompt is not supported on iOS Safari/Chrome
 (() => {
   const ua = window.navigator.userAgent || '';
@@ -111,7 +129,7 @@ form.addEventListener('submit', (e) => {
   const details = detailsEl.value.trim();
   const due = dueEl.value || undefined;
   if (!title) return;
-  const task = { id: crypto.randomUUID(), title, details: details || undefined, due, done: false, createdAt: Date.now() };
+  const task = { id: crypto.randomUUID(), title, details: details || undefined, due, status: 'Not started', createdAt: Date.now() };
   tasks.unshift(task);
   persist();
   form.reset();
@@ -120,15 +138,28 @@ form.addEventListener('submit', (e) => {
 });
 
 filterEls.forEach(el => el.addEventListener('click', () => {
-  filterEls.forEach(f => f.classList.remove('active'));
-  el.classList.add('active');
-  currentFilter = el.dataset.filter;
-  render();
+  setFilter(el.dataset.filter);
 }));
+
+function setFilter(filter) {
+  currentFilter = filter;
+  // Update chips active state only for native chips
+  const chipFilters = new Set(['all','today','upcoming','done']);
+  filterEls.forEach(f => {
+    const isActive = chipFilters.has(filter) && f.dataset.filter === filter;
+    f.classList.toggle('active', isActive);
+    if (chipFilters.has(filter)) {
+      f.setAttribute('aria-selected', String(isActive));
+    } else {
+      f.setAttribute('aria-selected', 'false');
+    }
+  });
+  render();
+}
 
 searchEl.addEventListener('input', () => render());
 clearDoneBtn.addEventListener('click', () => {
-  tasks = tasks.filter(t => !t.done);
+  tasks = tasks.filter(t => t.status !== 'completed');
   persist();
   render();
 });
@@ -174,14 +205,24 @@ function render() {
   let filtered = tasks;
   switch (currentFilter) {
     case 'today':
-      filtered = tasks.filter(t => t.due === todayStr && !t.done);
+      filtered = tasks.filter(t => t.due === todayStr && t.status !== 'completed');
       break;
     case 'upcoming':
-      filtered = tasks.filter(t => t.due && t.due > todayStr && !t.done);
+      filtered = tasks.filter(t => t.due && t.due > todayStr && t.status !== 'completed');
       break;
     case 'done':
-      filtered = tasks.filter(t => t.done);
+      filtered = tasks.filter(t => t.status === 'completed');
       break;
+    case 'overdue':
+      filtered = tasks.filter(t => t.due && t.due < todayStr && t.status !== 'completed');
+      break;
+    case 'pending':
+      filtered = tasks.filter(t => t.status !== 'completed');
+      break;
+  }
+  if (typeof currentFilter === 'string' && currentFilter.startsWith('status:')) {
+    const wanted = currentFilter.slice('status:'.length);
+    filtered = tasks.filter(t => (t.status || 'Not started') === wanted);
   }
   if (search) {
     filtered = filtered.filter(t =>
@@ -201,12 +242,7 @@ function render() {
     const li = document.createElement('li');
     li.className = 'item';
     li.dataset.id = t.id;
-    if (t.done) li.classList.add('done');
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = t.done;
-    checkbox.addEventListener('change', () => toggleDone(t.id, checkbox.checked));
+    if (t.status === 'completed') li.classList.add('done');
 
     const meta = document.createElement('div');
     meta.className = 'meta';
@@ -222,10 +258,10 @@ function render() {
     const due = document.createElement('div');
     due.className = 'due';
     if (t.due) {
-      const label = labelForDue(t.due);
+      const label = labelForDue(t.due, t.status);
       due.textContent = label;
       const todayStr = localYMD(new Date());
-      const isOverdue = t.due < todayStr && !t.done;
+      const isOverdue = t.due < todayStr && t.status !== 'completed';
       if (isOverdue) {
         li.classList.add('overdue');
         const badge = document.createElement('span');
@@ -245,6 +281,17 @@ function render() {
     const actions = document.createElement('div');
     actions.className = 'actions';
 
+    // Status dropdown (right side)
+    const statusSelect = document.createElement('select');
+    statusSelect.className = 'status-select';
+    for (const s of STATUS_VALUES) {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      if ((t.status || 'Not started') === s) opt.selected = true;
+      statusSelect.appendChild(opt);
+    }
+    statusSelect.addEventListener('change', () => updateStatus(t.id, statusSelect.value));
+
     const editBtn = document.createElement('button');
     editBtn.className = 'btn outline';
     editBtn.textContent = 'Edit';
@@ -255,10 +302,10 @@ function render() {
     delBtn.textContent = 'Delete';
     delBtn.addEventListener('click', () => removeTask(t.id));
 
+    actions.appendChild(statusSelect);
     actions.appendChild(editBtn);
     actions.appendChild(delBtn);
 
-    li.appendChild(checkbox);
     li.appendChild(meta);
     li.appendChild(actions);
 
@@ -266,10 +313,10 @@ function render() {
   }
 }
 
-function labelForDue(yyyyMmDd) {
+function labelForDue(yyyyMmDd, status) {
   const todayStr = localYMD(new Date());
   if (yyyyMmDd === todayStr) return 'Due today';
-  if (yyyyMmDd < todayStr) {
+  if (yyyyMmDd < todayStr && status !== 'completed') {
     const d = new Date(yyyyMmDd);
     return `Overdue: ${d.toLocaleDateString()}`;
   }
@@ -277,12 +324,11 @@ function labelForDue(yyyyMmDd) {
   return `Due ${d.toLocaleDateString()}`;
 }
 
-function toggleDone(id, done) {
+function updateStatus(id, status) {
   const t = tasks.find(t => t.id === id);
   if (!t) return;
-  t.done = done;
+  t.status = status;
   persist();
-  // keep item in place but optional re-render for filters
   render();
 }
 
@@ -323,14 +369,20 @@ function loadTasks() {
 function sanitizeTasks(arr) {
   return arr
     .filter(x => x && typeof x === 'object')
-    .map(x => ({
-      id: String(x.id || crypto.randomUUID()),
-      title: String(x.title || '').slice(0, 120),
-      details: x.details ? String(x.details).slice(0, 300) : undefined,
-      due: x.due ? String(x.due) : undefined,
-      done: Boolean(x.done),
-      createdAt: Number(x.createdAt || Date.now()),
-    }))
+    .map(x => {
+      // Migrate legacy "done" boolean to status
+      let status = 'Not started';
+      if (typeof x.status === 'string' && STATUS_VALUES.includes(x.status)) status = x.status;
+      else if (x.done === true) status = 'completed';
+      return {
+        id: String(x.id || crypto.randomUUID()),
+        title: String(x.title || '').slice(0, 120),
+        details: x.details ? String(x.details).slice(0, 300) : undefined,
+        due: x.due ? String(x.due) : undefined,
+        status,
+        createdAt: Number(x.createdAt || Date.now()),
+      };
+    })
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
@@ -361,14 +413,54 @@ function localYMD(d) {
 function updateDashboard() {
   if (!dashOverdueEl) return; // dashboard not present
   const todayStr = localYMD(new Date());
-  const overdue = tasks.filter(t => t.due && t.due < todayStr && !t.done).length;
-  const pending = tasks.filter(t => !t.done).length;
-  const today = tasks.filter(t => t.due === todayStr && !t.done).length;
-  const done = tasks.filter(t => t.done).length;
+  const overdue = tasks.filter(t => t.due && t.due < todayStr && t.status !== 'completed').length;
+  const pending = tasks.filter(t => t.status !== 'completed').length;
+  const today = tasks.filter(t => t.due === todayStr && t.status !== 'completed').length;
+  const done = tasks.filter(t => t.status === 'completed').length;
   dashOverdueEl.textContent = String(overdue);
   dashPendingEl.textContent = String(pending);
   dashTodayEl.textContent = String(today);
   dashDoneEl.textContent = String(done);
+
+  // Status breakdown counts (optional UI may omit these elements)
+  if (dashStatusNotStartedEl) {
+    dashStatusNotStartedEl.textContent = String(tasks.filter(t => t.status === 'Not started').length);
+  }
+  if (dashStatusInProgressEl) {
+    dashStatusInProgressEl.textContent = String(tasks.filter(t => t.status === 'in-progress').length);
+  }
+  if (dashStatusPendingEl) {
+    dashStatusPendingEl.textContent = String(tasks.filter(t => t.status === 'pending').length);
+  }
+  if (dashStatusBlockedEl) {
+    dashStatusBlockedEl.textContent = String(tasks.filter(t => t.status === 'Blocked').length);
+  }
+  if (dashStatusCompletedEl) {
+    dashStatusCompletedEl.textContent = String(tasks.filter(t => t.status === 'completed').length);
+  }
+
+  // Make dashboard values clickable to filter
+  dashOverdueEl?.setAttribute('title', 'Click to filter overdue');
+  dashPendingEl?.setAttribute('title', 'Click to filter pending');
+  dashTodayEl?.setAttribute('title', 'Click to filter due today');
+  dashDoneEl?.setAttribute('title', 'Click to filter completed');
+
+  dashOverdueEl?.addEventListener('click', () => setFilter('overdue'), { once: true });
+  dashPendingEl?.addEventListener('click', () => setFilter('pending'), { once: true });
+  dashTodayEl?.addEventListener('click', () => setFilter('today'), { once: true });
+  dashDoneEl?.addEventListener('click', () => setFilter('done'), { once: true });
+
+  dashStatusNotStartedEl?.setAttribute('title', 'Click to filter Not started');
+  dashStatusInProgressEl?.setAttribute('title', 'Click to filter In progress');
+  dashStatusPendingEl?.setAttribute('title', 'Click to filter Pending');
+  dashStatusBlockedEl?.setAttribute('title', 'Click to filter Blocked');
+  dashStatusCompletedEl?.setAttribute('title', 'Click to filter Completed');
+
+  dashStatusNotStartedEl?.addEventListener('click', () => setFilter('status:Not started'), { once: true });
+  dashStatusInProgressEl?.addEventListener('click', () => setFilter('status:in-progress'), { once: true });
+  dashStatusPendingEl?.addEventListener('click', () => setFilter('status:pending'), { once: true });
+  dashStatusBlockedEl?.addEventListener('click', () => setFilter('status:Blocked'), { once: true });
+  dashStatusCompletedEl?.addEventListener('click', () => setFilter('status:completed'), { once: true });
 }
 
 function openAddModal() {
@@ -386,7 +478,7 @@ function closeAddModal() {
 
 // CSV helpers
 function tasksToCSV(items) {
-  const headers = ['id','title','details','due','done','createdAt'];
+  const headers = ['id','title','details','due','status','createdAt'];
   const lines = [headers.join(',')];
   for (const t of items) {
     const row = [
@@ -394,7 +486,7 @@ function tasksToCSV(items) {
       t.title ?? '',
       t.details ?? '',
       t.due ?? '',
-      String(!!t.done),
+      t.status ?? 'Not started',
       String(t.createdAt ?? '')
     ].map(csvEscape);
     lines.push(row.join(','));
@@ -420,13 +512,17 @@ function parseCSVToTasks(text) {
     const cols = parseCSVLine(lines[i]);
     const get = (name) => cols[idx[name]] ?? '';
     const doneStr = String(get('done')).toLowerCase();
+    const statusStr = String(get('status'));
     const created = Number(get('createdAt'));
+    let status = 'Not started';
+    if (statusStr && STATUS_VALUES.includes(statusStr)) status = statusStr;
+    else if (doneStr === 'true' || doneStr === '1' || doneStr === 'yes') status = 'completed';
     out.push({
       id: get('id') || crypto.randomUUID(),
       title: get('title'),
       details: get('details') || undefined,
       due: get('due') || undefined,
-      done: doneStr === 'true' || doneStr === '1' || doneStr === 'yes',
+      status,
       createdAt: Number.isFinite(created) && created > 0 ? created : Date.now()
     });
   }
@@ -459,7 +555,7 @@ function parseCSVLine(line) {
 // Overdue notifications and app badge helpers
 function getOverdueTasks() {
   const todayStr = localYMD(new Date());
-  return tasks.filter(t => t.due && t.due < todayStr && !t.done);
+  return tasks.filter(t => t.due && t.due < todayStr && t.status !== 'completed');
 }
 
 async function maybeNotifyOverdue(force = false) {
