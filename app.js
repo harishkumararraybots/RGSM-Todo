@@ -367,11 +367,11 @@ function renderTable(items) {
   const header = `
     <thead>
       <tr>
-        <th style="width:28%">Title</th>
-        <th style="width:32%">Details</th>
-        <th style="width:14%">Due</th>
-        <th style="width:16%">Status</th>
-        <th style="width:10%; text-align:right">Actions</th>
+        <th>Title</th>
+        <th>Details</th>
+        <th>Due</th>
+        <th>Status</th>
+        <th style="text-align:right">Actions</th>
       </tr>
     </thead>`;
 

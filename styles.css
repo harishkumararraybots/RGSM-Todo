@@ -131,8 +131,8 @@ input[type="checkbox"] { width: 18px; height: 18px; }
 .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
 
 /* Table view */
-.table-wrap { border: 1px solid #233045; border-radius: 12px; overflow: auto; background: linear-gradient(180deg, #0f172a 0%, #0f182c 100%); box-shadow: 0 8px 16px #00000029; }
-.tasks-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 720px; }
+.table-wrap { border: 1px solid #233045; border-radius: 12px; overflow: auto; background: linear-gradient(180deg, #0f172a 0%, #0f182c 100%); box-shadow: 0 8px 16px #00000029; -webkit-overflow-scrolling: touch; }
+.tasks-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .tasks-table thead th { position: sticky; top: 0; background: #0f1832; border-bottom: 1px solid #1e2b45; color: #cbd5e1; text-align: left; padding: 10px 12px; font-weight: 700; font-size: 0.85rem; }
 .tasks-table tbody td { padding: 10px 12px; border-bottom: 1px solid #1e2b45; vertical-align: top; }
 .tasks-table tbody tr:hover { background: #0f1a31; }
@@ -142,6 +142,18 @@ input[type="checkbox"] { width: 18px; height: 18px; }
 .tasks-table .col-due { color: #93c5fd; font-size: 0.9rem; white-space: nowrap; }
 .tasks-table .col-actions { white-space: nowrap; text-align: right; }
 .tasks-table .status-select { min-width: 160px; }
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .tasks-table thead th, .tasks-table tbody td { padding: 8px 10px; }
+  .tasks-table thead th { font-size: 0.8rem; }
+  .tasks-table .status-select { min-width: 120px; }
+  /* Hide Details column on small screens to avoid overflow */
+  .tasks-table thead th:nth-child(2),
+  .tasks-table tbody td:nth-child(2) { display: none; }
+  /* Allow title/due to use space better */
+  .tasks-table .col-title { word-break: break-word; }
+}
 
 /* Status dropdown styling */
 .status-select {
